@@ -1,5 +1,18 @@
 const { GPU } = require('gpu.js');
 const gpu = new GPU();
+function multMat(matrixA, matrixB){
+    const multiplyMatrix = gpu.createKernel(function(a, b) {
+        let sum = 0;
+        for (let i = 0; i < this.constants.size; i++) {
+            sum += a[this.thread.y][i] * b[i][this.thread.x];
+        }
+        return sum;
+    }).setOutput([matrixA.length, matrixB[0].length])
+    .setConstants({ size: matrixA[0].length });
+
+    // 행렬 곱셈 실행
+    return multiplyMatrix(matrixA, matrixB);
+}
 
 class Matrix{
     constructor(m0query0Array, n, init){
@@ -85,8 +98,12 @@ class Matrix{
         if (type1 === 'number' && type2 === 'number') {
             return v1 * v2;
         } else if (type1 === 'object' && type2 === 'number') {
-
-        } else if (type1 === 'number' && type2 === 'object') {}
+            return new Matrix(v1.map(x => x.map(y => y * v2)));
+        } else if (type1 === 'number' && type2 === 'object') {
+            return new Matrix(v2.map(x => x.map(y => y * v1)));
+        } else {
+            return new Matrix(multMat(v1, v2));
+        }
     }
 
     static isSameMatrix(v1, v2){
